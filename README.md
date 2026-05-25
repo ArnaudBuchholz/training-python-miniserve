@@ -36,11 +36,35 @@ server.shutdown()
 ## Development
 
 ```bash
-uv sync           # install deps and create virtual environment
-uv run pytest     # run tests with coverage
-uv build          # build .whl and .tar.gz for publishing
-uv publish        # push to PyPI (requires PYPI_TOKEN env var)
+make install      # install deps and create virtual environment
+make check        # full pipeline — lint, type-check, tests
+make lint         # lint only
+make fix          # auto-fix lint issues then format
+make fmt          # format only
+make type-check   # type-check only
+make test         # tests only
+make build        # build .whl and .tar.gz for publishing
+make publish      # push to PyPI (requires PYPI_TOKEN env var)
 ```
+
+---
+
+## Linting and type checking
+
+Two tools are configured, both invoked via `make`:
+
+**`ruff`** — covers linting and formatting in a single fast tool. Replaces `flake8`, `isort`, and `black`.
+
+| Rule group | What it checks |
+|---|---|
+| `E` / `W` | Basic style (indentation, whitespace, line length) |
+| `F` | Unused imports, undefined names |
+| `I` | Import ordering (replaces `isort`) |
+| `UP` | Suggests modern Python syntax (e.g. `list[str]` instead of `List[str]`) |
+| `B` | Common bugs — things that work but are likely wrong |
+| `SIM` | Code that can be simplified |
+
+**`mypy`** — static type checker. Validates that type annotations are correct and consistent across the codebase. Configured in strict mode, meaning all functions must be annotated and `Any` is disallowed unless explicitly justified.
 
 ---
 
@@ -68,7 +92,7 @@ Replaces the old `setup.py` / `setup.cfg` / `requirements.txt` trio. Everything 
 - **`[build-system]`** — tells `uv build` (and pip) to use `hatchling` to package the code. Hatchling is a modern, fast build backend.
 - **`[project]`** — the package identity: name, version, Python requirement, license, PyPI classifiers. `dependencies = []` means no third-party runtime deps (only Python's standard library is used).
 - **`[project.scripts]`** — creates the `miniserve` terminal command when someone installs the package. Points to the `main` function in `cli.py`.
-- **`[dependency-groups] dev`** — pytest and coverage are only needed for development, not by users who install the package.
+- **`[dependency-groups] dev`** — pytest, coverage, ruff, and mypy are only needed for development, not by users who install the package.
 - **`[tool.hatch.build.targets.wheel]`** — tells the build tool where the source code lives (`src/miniserve`). This is the `src/` layout pattern — it prevents accidental imports of local code instead of the installed package.
 
 ### `src/miniserve/__init__.py` — the public API

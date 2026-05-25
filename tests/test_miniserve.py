@@ -1,5 +1,4 @@
 import socket
-import tempfile
 import time
 from pathlib import Path
 
@@ -7,7 +6,6 @@ import pytest
 
 from miniserve import start_server
 from miniserve.cli import _build_parser, main
-
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -43,7 +41,6 @@ class TestStartServer:
             server.shutdown()
 
     def test_directory_defaults_to_cwd(self) -> None:
-        import os
         port = _free_port()
         server = start_server(port=port)
         try:
