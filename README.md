@@ -49,7 +49,67 @@ make publish      # push to PyPI (requires PYPI_TOKEN env var)
 
 ---
 
-## Linting and type checking
+## Publishing
+
+### How it works
+
+When you run `make publish`, uv:
+1. Reads the built `.whl` and `.tar.gz` from `dist/`
+2. Uploads them to PyPI's API (`https://upload.pypi.org/legacy/`)
+3. PyPI stores the files and makes them available via `pip install miniserve`
+
+Always run `make build` before `make publish`.
+
+### Automated publishing via GitHub Actions
+
+The recommended approach is to never publish manually from a laptop. Instead, pushing a version tag triggers the publish workflow in `.github/workflows/publish.yml`:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+The workflow builds the package, runs the full quality pipeline, and publishes to PyPI — all without any stored credentials (see Trusted Publishing below).
+
+### Authentication
+
+**Trusted Publishing (recommended)** — PyPI's modern approach. No API token is stored anywhere. Instead, you configure PyPI to trust a specific GitHub Actions workflow from a specific repo. GitHub's OIDC issues a short-lived token automatically at publish time. Nothing to rotate, nothing to leak.
+
+Setup steps:
+1. Go to pypi.org → Your project → Manage → Publishing
+2. Add a Trusted Publisher entry:
+   - Owner: your GitHub username
+   - Repository: `miniserve`
+   - Workflow: `publish.yml`
+3. That's it — the workflow handles everything from there
+
+**API token (fallback)** — if you need to publish manually:
+1. Go to pypi.org → Account Settings → API Tokens
+2. Create a token scoped to this package only (not your whole account)
+3. Pass it at publish time:
+```bash
+UV_PUBLISH_TOKEN=pypi-... make publish
+```
+
+### Supply chain security
+
+Four attack vectors and how they are mitigated:
+
+| Threat | Mitigation |
+|---|---|
+| Stolen credentials | Trusted Publishing — no long-lived token exists |
+| Tampered artefact | Sigstore attestations — cryptographically links the artefact to the exact CI run that built it |
+| Name squatting | Register the package name on PyPI early, even with a `0.0.1` placeholder |
+| Compromised deps | Commit `uv.lock` and pin versions in `pyproject.toml` |
+
+**Sigstore attestations** are enabled in the publish workflow via `attestations: true`. This cryptographically signs the artefact so users can verify it came from your exact GitHub Actions run:
+
+```bash
+pip download miniserve
+python -m sigstore verify miniserve-*.whl
+```
+
+---
 
 Two tools are configured, both invoked via `make`:
 
@@ -72,7 +132,11 @@ Two tools are configured, both invoked via `make`:
 
 ```
 miniserve/
+├── .github/
+│   └── workflows/
+│       └── publish.yml         ← publishes to PyPI on version tag push
 ├── pyproject.toml              ← package config, build system, scripts
+├── Makefile                    ← developer commands
 ├── README.md
 ├── uv.lock                     ← locked dependencies
 ├── .venv/                      ← virtual environment (git-ignored)
